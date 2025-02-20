@@ -1,33 +1,26 @@
 <?php
-
 namespace ThibaudDauce\Mattermost;
-
-use GuzzleHttp\Client;
 
 class Mattermost
 {
-
-    /**
-     * Guzzle HTTP Client
-     *
-     * @var Client
-     */
-    public $mattermost;
-
     /**
      * Default webhook URL
      *
-     * @var string
+     * @var string|null
      */
-    public $webhook;
+    public ?string $webhook;
 
-    public function __construct(Client $mattermost, $webhook = null)
+    public function __construct(?string $webhook = null)
     {
-        $this->mattermost = $mattermost;
         $this->webhook = $webhook;
     }
 
-    public function send(Message $message, $webhook = null)
+    /**
+     * @param Message $message
+     * @param string|null $webhook
+     * @return void
+     */
+    public function send(Message $message, ?string $webhook = null): void
     {
         if (is_null($webhook) and is_null($this->webhook)) {
             throw new MattermostException(
@@ -39,10 +32,13 @@ class Mattermost
             $webhook = $this->webhook;
         }
 
-        $this->mattermost->post($webhook, [
-            'json' => $message->toArray(),
-        ], [
-            'Content-Type' => 'application/json',
-        ]);
+        $ch = \curl_init();
+        \curl_setopt($ch, CURLOPT_URL, $webhook);
+        \curl_setopt($ch, CURLOPT_POST, true);
+        \curl_setopt($ch, CURLOPT_POSTFIELDS, \json_encode($message->toArray()));
+        \curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        \curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        \curl_exec($ch);
+        \curl_close($ch);
     }
 }
